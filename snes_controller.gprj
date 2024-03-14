@@ -1,0 +1,14 @@
+<?xml version="1" encoding="UTF-8"?>
+<!DOCTYPE gowin-fpga-project>
+<Project>
+    <Template>FPGA</Template>
+    <Version>5</Version>
+    <Device name="GW5A-25A" pn="GW5A-LV25MG121NES">gw5a25a-000</Device>
+    <FileList>
+        <File path="src/primer25k/gowin_pll_snes.v" type="file.verilog" enable="1"/>
+        <File path="src/top.v" type="file.verilog" enable="1"/>
+        <File path="src/uart_tx_V2.v" type="file.verilog" enable="1"/>
+        <File path="src/primer25k/snestang.cst" type="file.cst" enable="1"/>
+        <File path="src/snes_controller.gao" type="file.gao" enable="0"/>
+    </FileList>
+</Project>
