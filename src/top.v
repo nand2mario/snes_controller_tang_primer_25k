@@ -1,53 +1,5 @@
 
-/*
-
-https://gamefaqs.gamespot.com/snes/916396-super-nintendo/faqs/5395
-
-       ----------------------------- ---------------------
-      |                             |                      \
-      | (1)     (2)     (3)     (4) |   (5)     (6)     (7) |
-      |                             |                      /
-       ----------------------------- ---------------------
-
-
-        Pin     Description             Color of wire in cable
-        ===     ===========             ======================
-        1       +5v                     White
-        2       Data clock              Yellow
-        3       Data latch              Orange
-        4       Serial data             Red
-        5       ?                       no wire
-        6       ?                       no wire
-        7       Ground                  Brown
-
-Every 16.67ms (or about 60Hz), the SNES CPU sends out a 12us wide, positive
-going data latch pulse on pin 3. This instructs the ICs in the controller
-to latch the state of all buttons internally. Six microsenconds after the
-fall of the data latch pulse, the CPU sends out 16 data clock pulses on
-pin 2. These are 50% duty cycle with 12us per full cycle. The controllers
-serially shift the latched button states out pin 4 on every rising edge
-of the clock, and the CPU samples the data on every falling edge.
-
-        Clock Cycle     Button Reported
-        ===========     ===============
-        1               B
-        2               Y
-        3               Select
-        4               Start
-        5               Up on joypad
-        6               Down on joypad
-        7               Left on joypad
-        8               Right on joypad
-        9               A
-        10              X
-        11              L
-        12              R
-        13              none (always high)
-        14              none (always high)
-        15              none (always high)
-        16              none (always high)
-
-*/
+// see snescontroller.v
 
 module snes_controller_top (
     input sys_clk,
@@ -56,9 +8,12 @@ module snes_controller_top (
     output UART_TXD,
     output [1:0] led,
 
-    output reg joy_latch,
-    output joy_clk,
-    input joy_data
+    output joy1_latch,
+    output joy1_clk,
+    input joy1_data,
+    output joy2_latch,
+    output joy2_clk,
+    input joy2_data
 );
 
 wire mclk;                      // SNES master clock at 21.5054Mhz (~21.477)
@@ -73,13 +28,20 @@ gowin_pll_snes pll_snes (
 localparam FREQ = 21500000;
 localparam TIME_6US = FREQ / 1000000 * 6;
 
-reg joy_clk_reg = 1;
-assign joy_clk = joy_clk_reg;
-
-reg [2:0] state;
 reg [$clog2(FREQ)-1:0] cnt;
-reg [3:0] bits;
-reg [15:0] btns;
+reg [2:0] state;
+wire [15:0] btns1;
+wire [15:0] btns2;
+
+snescontroller cntr1 (
+    .clk(mclk), .resetn(1), .buttons(btns1),
+    .joy_strb(joy1_latch), .joy_clk(joy1_clk), .joy_data(joy1_data)
+);
+
+snescontroller cntr2 (
+    .clk(mclk), .resetn(1), .buttons(btns2),
+    .joy_strb(joy2_latch), .joy_clk(joy2_clk), .joy_data(joy2_data)
+);
 
 `include "print.v"
 defparam tx.uart_freq=115200;
@@ -101,73 +63,68 @@ always @(posedge mclk) begin
         state <= 2;
     end
 
-    3'd2: begin         // send 12us-wide latch
-        joy_latch <= 1;
-        if (cnt == TIME_6US * 2 - 1) begin
-            joy_latch <= 0;
-            state <= 3;
-            cnt <= 0;
-            bits <= 0;
-        end
-    end
-
-    3'd3: begin         // wait 6us, then joy_clk falls, sample bit
-        if (cnt == TIME_6US - 1) begin
-            joy_clk_reg <= 0;
-            cnt <= 0;
-            state <= 4;
-            btns <= {btns[14:0], joy_data};
-        end
-    end
-
-    3'd4: begin         // wait 6us, then joy_clk rises
-        if (cnt == TIME_6US - 1) begin
-            joy_clk_reg <= 1;
-            cnt <= 0;
-            bits <= bits + 1;
-            if (bits == 4'd15)      // scan complete
-                state <= 5;
-            else
-                state <= 3;
-        end
-    end
-
-    3'd5: begin         // print result
+    3'd2: begin         // print result
         case (cnt[19:0])
-        20'h00000: `print("\x0dSNES Buttons: ", STR);
-        20'h10000: if (!btns[15]) `print("B ", STR);
+        20'h00000: `print("\x0dJOY1: ", STR);
+        20'h10000: if (!btns1[15]) `print("B ", STR);
                    else           `print("_ ", STR);
-        20'h18000: if (!btns[14]) `print("Y ", STR);
+        20'h18000: if (!btns1[14]) `print("Y ", STR);
                    else           `print("_ ", STR);
-        20'h20000: if (!btns[13]) `print("Select ", STR);
-                   else           `print("______ ", STR);
-        20'h28000: if (!btns[12]) `print("Start ", STR);
-                   else           `print("_____ ", STR);
-        20'h30000: if (!btns[11]) `print("Up ", STR);
+        20'h20000: if (!btns1[13]) `print("SEL ", STR);
+                   else           `print("___ ", STR);
+        20'h28000: if (!btns1[12]) `print("STA ", STR);
+                   else           `print("___ ", STR);
+        20'h30000: if (!btns1[11]) `print("UP ", STR);
                    else           `print("__ ", STR);
-        20'h38000: if (!btns[10]) `print("Down ", STR);
-                   else           `print("____ ", STR);
-        20'h40000: if (!btns[9])  `print("Left ", STR);
-                   else           `print("____ ", STR);
-        20'h48000: if (!btns[8])  `print("Right ", STR);
-                   else           `print("_____ ", STR);
-        20'h50000: if (!btns[7])  `print("A ", STR);
+        20'h38000: if (!btns1[10]) `print("DN ", STR);
+                   else           `print("__ ", STR);
+        20'h40000: if (!btns1[9])  `print("LE ", STR);
+                   else           `print("__ ", STR);
+        20'h48000: if (!btns1[8])  `print("RI ", STR);
+                   else           `print("__ ", STR);
+        20'h50000: if (!btns1[7])  `print("A ", STR);
                    else           `print("_ ", STR);
-        20'h58000: if (!btns[6])  `print("X ", STR);
+        20'h58000: if (!btns1[6])  `print("X ", STR);
                    else           `print("_ ", STR);
-        20'h60000: if (!btns[5])  `print("L ", STR);
+        20'h60000: if (!btns1[5])  `print("L ", STR);
                    else           `print("_ ", STR);
-        20'h68000: if (!btns[4])  `print("R ", STR);
+        20'h68000: if (!btns1[4])  `print("R ", STR);
                    else           `print("_ ", STR);
-        20'h80000: begin
+
+        20'h70000: `print("  JOY2: ", STR);
+        20'h80000: if (!btns2[15]) `print("B ", STR);
+                   else           `print("_ ", STR);
+        20'h88000: if (!btns2[14]) `print("Y ", STR);
+                   else           `print("_ ", STR);
+        20'h90000: if (!btns2[13]) `print("SEL ", STR);
+                   else           `print("___ ", STR);
+        20'h98000: if (!btns2[12]) `print("STA ", STR);
+                   else           `print("___ ", STR);
+        20'hA0000: if (!btns2[11]) `print("UP ", STR);
+                   else           `print("__ ", STR);
+        20'hA8000: if (!btns2[10]) `print("DN ", STR);
+                   else           `print("__ ", STR);
+        20'hB0000: if (!btns2[9])  `print("LE ", STR);
+                   else           `print("__ ", STR);
+        20'hB8000: if (!btns2[8])  `print("RI ", STR);
+                   else           `print("__ ", STR);
+        20'hC0000: if (!btns2[7])  `print("A ", STR);
+                   else           `print("_ ", STR);
+        20'hC8000: if (!btns2[6])  `print("X ", STR);
+                   else           `print("_ ", STR);
+        20'hD0000: if (!btns2[5])  `print("L ", STR);
+                   else           `print("_ ", STR);
+        20'hD8000: if (!btns2[4])  `print("R ", STR);
+                   else           `print("_ ", STR);
+        20'hF0000: begin
             cnt <= 0;
-            state <= 6;
+            state <= 3;
         end
         default: ;
         endcase
     end
 
-    3'd6: begin         // wait 16ms, then start again
+    3'd3: begin         // wait 16ms, then start again
         if (cnt == FREQ / 1000 * 16) begin
             cnt <= 0;
             state <= 2;

@@ -8,12 +8,20 @@ IO_LOC "UART_TXD" C3;
 IO_PORT "UART_TXD" IO_TYPE=LVCMOS33;
 
 // SNES Controller on pmod
-IO_LOC "joy_clk" L5;
-IO_PORT "joy_clk" PULL_MODE=NONE IO_TYPE=LVCMOS33;
-IO_LOC "joy_latch" K11;
-IO_PORT "joy_latch" PULL_MODE=NONE IO_TYPE=LVCMOS33;
-IO_LOC "joy_data" E11;
-IO_PORT "joy_data" PULL_MODE=NONE IO_TYPE=LVCMOS33;
+IO_LOC "joy1_latch" A11;
+IO_PORT "joy1_latch" PULL_MODE=NONE IO_TYPE=LVCMOS33;
+IO_LOC "joy1_clk" K11;
+IO_PORT "joy1_clk" PULL_MODE=NONE IO_TYPE=LVCMOS33;
+IO_LOC "joy1_data" L5;
+IO_PORT "joy1_data" PULL_MODE=NONE IO_TYPE=LVCMOS33;
+
+IO_LOC "joy2_latch" A10;
+IO_PORT "joy2_latch" PULL_MODE=NONE IO_TYPE=LVCMOS33;
+IO_LOC "joy2_clk" L11;
+IO_PORT "joy2_clk" PULL_MODE=NONE IO_TYPE=LVCMOS33;
+IO_LOC "joy2_data" K5;
+IO_PORT "joy2_data" PULL_MODE=NONE IO_TYPE=LVCMOS33;
+
 
 // 2 LEDs for debug
 IO_LOC "led[1]" E8;    // Ready
