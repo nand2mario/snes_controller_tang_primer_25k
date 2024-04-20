@@ -26,13 +26,9 @@ This is the wiring:
 
 ```
 
-On the prototype board:
+Connection through pmod:
 
 <img src="doc/pmod.jpg" width=500>
-
-Back side:
-
-<img src="doc/pmod_back.jpg" width=500>
 
 Result from UART:
 
